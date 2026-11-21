@@ -40,13 +40,13 @@ web = ROOT/'web'
 app.mount('/assets', StaticFiles(directory=str(web/'assets')), name='assets')
 
 @app.get('/favicon.ico',include_in_schema=False)
-def favicon():return FileResponse(web/'favicon.png')
+def favicon():return FileResponse(web/'favicon.svg')
 
 @app.get('/{path:path}',include_in_schema=False)
 def spa(path: str):
     if path.startswith('api/'):
         from fastapi import HTTPException
         raise HTTPException(404,'Rota não encontrada')
-    if path in ('styles.css','app.js','api-client.js','ui.js','admin.js','favicon.png'):
+    if path in ('styles.css','app.js','api-client.js','ui.js','admin.js','favicon.svg'):
         return FileResponse(web/path)
     return FileResponse(web/'index.html')
