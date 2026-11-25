@@ -1,4 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "fastapi"
+  "framework": "fastapi",
+  "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://reviver-api-production-0ed3328b.up.railway.app/api/v1/:path*"
+    }
+  ]
 }

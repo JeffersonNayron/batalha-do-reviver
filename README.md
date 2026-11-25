@@ -39,7 +39,7 @@ Apenas **Batalha do Reviver — Edição 01**, confirmada para **02/12/2026 às 
 
 ## Deploy
 
-Na Vercel, o ponto de entrada é `app.py`. A configuração do painel de produção requer PostgreSQL e as variáveis da seção de administração. Na ausência de PostgreSQL, a aplicação na Vercel mantém apenas o portal público com conteúdo inicial e agenda de leitura.
+Em produção, a Vercel serve as páginas públicas e encaminha `/api/v1/` ao serviço `reviver-api` no Railway. O projeto Railway da Batalha do Reviver contém o PostgreSQL e as variáveis da API. Cadastros e acessos administrativos ficam nesse banco.
 
 Railway: conectar o repositório, definir `DATABASE_URL` apontando para PostgreSQL permanente e `APP_ENV=production`; adicionar `ADMIN_PASSWORD_HASH` e `SESSION_SECRET` na área de variáveis do serviço; o `Dockerfile` está disponível. Não usar SQLite em disco efêmero em produção. Rodar migrações controladas antes de deploys que modifiquem o esquema; o setup atual `create_all` é apenas bootstrap inicial e não migra esquema existente.
 
