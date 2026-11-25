@@ -64,4 +64,12 @@ class MCOut(MCIn):
     id: int
 
 class Login(BaseModel):
+    username: str = Field(default="", max_length=255)
     password: str = Field(min_length=1, max_length=256)
+
+class ResetRequest(BaseModel):
+    username: str = Field(min_length=1,max_length=255)
+
+class ResetConfirm(BaseModel):
+    token: str = Field(min_length=20,max_length=128)
+    password: str = Field(min_length=12,max_length=256)

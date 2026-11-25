@@ -1,20 +1,27 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from api.database import Base, engine, SessionLocal
 from api.seed import seed
+from api.accounts import seed_admin
 from api.routes import router
 from api.config import ROOT, get_settings
 import api.models  # registers model metadata
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(engine)
-    with SessionLocal() as db:
-        seed(db)
+    with engine.begin() as connection:
+        if connection.dialect.name == 'postgresql':
+            connection.execute(text('SELECT pg_advisory_xact_lock(827641907)'))
+        elif connection.dialect.name == 'sqlite':
+            connection.exec_driver_sql('BEGIN IMMEDIATE')
+        Base.metadata.create_all(connection)
+        with SessionLocal(bind=connection) as db:
+            seed(db)
+            seed_admin(db)
     yield
 
 app = FastAPI(title='Batalha do Reviver — API',version='1.0.0',lifespan=lifespan, docs_url='/api/docs', redoc_url=None)
@@ -22,16 +29,20 @@ if get_settings().allowed_origin:
     app.add_middleware(CORSMiddleware,allow_origins=[get_settings().allowed_origin], allow_credentials=True, allow_methods=['GET','POST','PUT'],allow_headers=['Content-Type'])
 @app.middleware('http')
 async def security_headers(request: Request, call_next):
+    settings = get_settings()
     if request.method in ('POST','PUT','PATCH','DELETE'):
         origin = request.headers.get('origin', '')
-        expected = str(request.base_url).rstrip('/')
-        if origin and origin != expected:
-            from fastapi.responses import JSONResponse
+        allowed = {str(request.base_url).rstrip('/'), settings.public_base_url,
+                   settings.allowed_origin}
+        if origin and origin not in allowed:
             return JSONResponse({'detail': 'Origem não autorizada'}, status_code=403)
     response = await call_next(request)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    is_admin = request.url.path == '/admin' or request.url.path.startswith(('/api/v1/auth/', '/api/v1/admin/'))
+    response.headers['Referrer-Policy'] = 'no-referrer' if is_admin else 'strict-origin-when-cross-origin'
+    if is_admin:
+        response.headers['Cache-Control'] = 'no-store'
     response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
     return response
 

@@ -29,5 +29,5 @@ def seed(db: Session):
                      venue='Praça Odylo Costa Filho — Centro Histórico', city='São Luís', state='MA',
                      description='Estreia da Batalha do Reviver: 16 vagas para MCs, inscrições no local, entrada gratuita.',
                      capacity=16, champion_prize=100, runner_up_prize=50, registration='Inscrições no local',
-                     free=True, published=True, cover_url='https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1500&q=85'))
+                     free=True, published=True, cover_url='https://upload.wikimedia.org/wikipedia/commons/d/d5/Centro_Hist%C3%B3rico%2C_S%C3%A3o_Lu%C3%ADs.jpg'))
     db.commit()

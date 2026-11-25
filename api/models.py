@@ -55,3 +55,15 @@ class Participation(Base):
     mc_id: Mapped[int] = mapped_column(ForeignKey('mcs.id'))
     placement: Mapped[int | None] = mapped_column(Integer, nullable=True)
     mc: Mapped['MC'] = relationship(back_populates='participations')
+
+class RootAdmin(Base):
+    __tablename__ = 'root_admin'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(160))
+    username: Mapped[str] = mapped_column(String(120), unique=True)
+    email: Mapped[str] = mapped_column(String(255))
+    phone: Mapped[str] = mapped_column(String(32))
+    password_hash: Mapped[str] = mapped_column(Text, default='')
+    reset_digest: Mapped[str] = mapped_column(String(64), default='')
+    reset_until: Mapped[int] = mapped_column(Integer, default=0)
+    session_version: Mapped[int] = mapped_column(Integer, default=0)

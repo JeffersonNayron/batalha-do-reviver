@@ -11,7 +11,8 @@ def test_seed_event_and_brand(client):
     assert events[0]['slug']=='reviver-edicao-01'
     assert events[0]['organization']['slug']=='batalha-do-reviver'
     assert events[0]['capacity']==16
-    assert client.get('/assets/logo.png').status_code==200
+    assert client.get('/assets/logo.webp').headers['content-type']=='image/webp'
+    assert client.get('/assets/fenix.webp').headers['content-type']=='image/webp'
     assert client.get('/favicon.ico').status_code==200
 
 def test_filters(client):

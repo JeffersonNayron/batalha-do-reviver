@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -5,8 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, Query
 from sqlalchemy import select, or_
 from sqlalchemy.orm import Session, selectinload
 from api.database import session_scope
-from api.models import Event, Organization, MC
-from api.schemas import EventIn, EventOut, OrgIn, OrgOut, MCIn, MCOut, Login
+from api.accounts import consume_reset, recovery_enabled, send_reset
+from api.models import Event, Organization, MC, RootAdmin
+from api.schemas import EventIn, EventOut, OrgIn, OrgOut, MCIn, MCOut, Login, ResetConfirm, ResetRequest
 from api.security import COOKIE, admin_guard, enabled, verify_password, issue_token
 from api.config import get_settings
 
@@ -25,8 +27,9 @@ def events(organization: str | None = None, search: str = '', period: str = Quer
     stmt = select(Event).options(selectinload(Event.organization)).join(Organization).where(Event.published.is_(True))
     if organization: stmt = stmt.where(Organization.slug == organization)
     if search: stmt = stmt.where(or_(Event.title.ilike(f'%{search[:80]}%'), Event.venue.ilike(f'%{search[:80]}%'), Organization.name.ilike(f'%{search[:80]}%')))
-    if period == 'upcoming': stmt = stmt.where(Event.start_at >= datetime.now(ZoneInfo('America/Fortaleza')).replace(tzinfo=None))
-    if period == 'past': stmt = stmt.where(Event.start_at < datetime.now(ZoneInfo('America/Fortaleza')).replace(tzinfo=None))
+    now = datetime.now(ZoneInfo('America/Fortaleza'))
+    if period == 'upcoming': stmt = stmt.where(Event.start_at >= now)
+    if period == 'past': stmt = stmt.where(Event.start_at < now)
     return db.scalars(stmt.order_by(Event.start_at).limit(200)).all()
 
 @router.get('/events/{slug}', response_model=EventOut)
@@ -51,20 +54,21 @@ def mc_detail(slug: str, db: Session = Depends(session_scope)):
 def status(request: Request):
     try: admin_guard(request); ok=True
     except HTTPException: ok=False
-    return {'configured':enabled(), 'authenticated':ok}
+    return {'configured': enabled(), 'authenticated': ok, 'recovery': enabled() and recovery_enabled()}
 
 @router.post('/auth/login')
-def login(credentials: Login, request: Request, response: Response):
+def login(credentials: Login, request: Request, response: Response, db: Session = Depends(session_scope)):
     key = request.client.host if request.client else 'unknown'
     now = time.monotonic()
     history = [t for t in _login_attempts.get(key, []) if now-t<900]
     if len(history)>=8: raise HTTPException(429, 'Muitas tentativas; tente novamente mais tarde')
-    if not verify_password(credentials.password):
+    admin = db.get(RootAdmin, 1)
+    if not verify_password(admin, credentials.username, credentials.password):
         history.append(now)
         _login_attempts[key]=history
         raise HTTPException(401, 'Credenciais inválidas')
     _login_attempts.pop(key,None)
-    response.set_cookie(COOKIE, issue_token(), httponly=True, secure=get_settings().production, samesite='strict', max_age=8*3600, path='/')
+    response.set_cookie(COOKIE, issue_token(admin.session_version), httponly=True, secure=get_settings().production, samesite='strict', max_age=8*3600, path='/')
     return {'ok': True}
 
 @router.post('/auth/logout')
@@ -116,3 +120,23 @@ def update_mc(mc_id:int,payload:MCIn,db:Session=Depends(session_scope)):
     if other:raise HTTPException(409,'Slug já utilizado')
     for key,val in payload.model_dump().items():setattr(item,key,val)
     db.commit();db.refresh(item);return item
+
+
+@router.post('/auth/reset-request')
+def reset_request(payload: ResetRequest, db: Session = Depends(session_scope)):
+    if not enabled() or not recovery_enabled():
+        raise HTTPException(503, 'Recuperação por e-mail indisponível.')
+    admin = db.get(RootAdmin, 1)
+    if admin and payload.username.strip().casefold() in (admin.username.casefold(), get_settings().admin_email.casefold()):
+        try:
+            send_reset(db, admin)
+        except (OSError, ValueError):
+            logging.getLogger(__name__).warning('Falha no envio de recuperação')
+    return {'ok': True}
+
+@router.post('/auth/reset-confirm')
+def reset_confirm(payload: ResetConfirm, response: Response, db: Session = Depends(session_scope)):
+    if not enabled(): raise HTTPException(503,'Serviço temporariamente indisponível.')
+    if not consume_reset(db,payload.token,payload.password): raise HTTPException(400,'Link inválido ou expirado. Solicite outro.')
+    response.delete_cookie(COOKIE, path='/')
+    return {'ok':True}

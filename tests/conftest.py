@@ -1,7 +1,11 @@
 import os
 from pathlib import Path
-os.environ['DATABASE_URL']='sqlite:///./test_reviver.db'
-from api.database import Base, engine
+from tempfile import TemporaryDirectory
+
+test_directory = TemporaryDirectory()
+test_database = (Path(test_directory.name) / 'reviver.db').as_posix()
+os.environ['DATABASE_URL'] = f'sqlite:///{test_database}'
+from api.database import engine
 import api.models
 from fastapi.testclient import TestClient
 from api.main import app
@@ -12,5 +16,4 @@ def client():
     with TestClient(app) as c:
         yield c
     engine.dispose()
-    Base.metadata.drop_all(engine)
-    Path('test_reviver.db').unlink(missing_ok=True)
+    test_directory.cleanup()

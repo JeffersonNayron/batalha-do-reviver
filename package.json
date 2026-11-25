@@ -1,2 +1,2 @@
 {
- "name":"batalha-do-reviver","private":true,"version":"1.0.0","description":"Portal cultural Batalha do Reviver — São Luís/MA","scripts":{"dev":"python -m uvicorn api.main:app --reload --port 8000","test":"python -m pytest -q"},"engines":{"node":">=20"}}
+ "name":"batalha-do-reviver","private":true,"version":"1.0.0","description":"Portal cultural Batalha do Reviver — São Luís/MA","scripts":{"dev":"python -m uvicorn api.main:app --reload --port 8000 --env-file .env","test":"python -m pytest -q"},"engines":{"node":">=20"}}

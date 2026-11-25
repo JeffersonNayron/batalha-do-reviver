@@ -17,14 +17,14 @@ Site e sistema de gestão da **Batalha do Reviver**, em São Luís/MA.
 python -m venv .venv
 source .venv/bin/activate  # no Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python -m uvicorn api.main:app --reload --port 8000
+python -m uvicorn api.main:app --reload --port 8000 --env-file .env
 ```
 
-Abra `http://localhost:8000`. API: `/api/docs` e verificação: `/api/v1/health`.
+Copie `.env.example` para `.env` para configurar o ambiente local. No VS Code, selecione **Tasks: Run Task → Reviver: iniciar portal** para usar o Python de `.venv`. Abra `http://localhost:8000`. API em `/api/docs` e verificação em `/api/v1/health`.
 
 ### Configurar o painel
 
-Use `scripts/hash_password.py` para gerar o hash da senha (mínimo 12 caracteres). Defina `ADMIN_PASSWORD_HASH` com esse hash; `SESSION_SECRET` com uma chave aleatória segura de no mínimo 32 caracteres e `APP_ENV=production` em produção. **Nunca publique os segredos no GitHub.** O painel fica intencionalmente desabilitado sem ambos.
+Use `scripts/hash_password.py` para gerar o hash da senha inicial (mínimo 12 caracteres). Defina `ADMIN_PASSWORD_HASH`, `ADMIN_USERNAME` e `SESSION_SECRET` no `.env` local ou nas variáveis protegidas da hospedagem. A chave da sessão precisa de no mínimo 32 caracteres. Em produção, configure também `APP_ENV=production` e PostgreSQL via `DATABASE_URL` (ou `POSTGRES_URL` na Vercel). O hash inicial é usado uma vez. A recuperação de senha atualiza o banco. Para ativar a recuperação por e-mail, configure `PUBLIC_BASE_URL` com o domínio HTTPS oficial, `ADMIN_EMAIL` e as variáveis `SMTP_*` de `.env.example`.
 
 ```bash
 python scripts/hash_password.py
@@ -38,6 +38,8 @@ Painel: `/admin`. A edição dos registros exige login e salva no banco. Somente
 Apenas **Batalha do Reviver — Edição 01**, confirmada para **02/12/2026 às 19h na Praça Odylo Costa Filho, São Luís/MA**, com **16 vagas**, **entrada gratuita**, **R$ 100** para campeão e **R$ 50** para vice. Nenhum MC, resultado, ranking ou edição externa fictícios são criados.
 
 ## Deploy
+
+Na Vercel, o ponto de entrada é `app.py`. A configuração do painel de produção requer PostgreSQL e as variáveis da seção de administração. Na ausência de PostgreSQL, a aplicação na Vercel mantém apenas o portal público com conteúdo inicial e agenda de leitura.
 
 Railway: conectar o repositório, definir `DATABASE_URL` apontando para PostgreSQL permanente e `APP_ENV=production`; adicionar `ADMIN_PASSWORD_HASH` e `SESSION_SECRET` na área de variáveis do serviço; o `Dockerfile` está disponível. Não usar SQLite em disco efêmero em produção. Rodar migrações controladas antes de deploys que modifiquem o esquema; o setup atual `create_all` é apenas bootstrap inicial e não migra esquema existente.
 
