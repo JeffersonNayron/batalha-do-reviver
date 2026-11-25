@@ -1,12 +1,33 @@
+import json
+from io import BytesIO
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from sqlalchemy import update
 
+from api.accounts import deliver_reset
 from api.config import get_settings
 from api.database import SessionLocal
 from api.models import RootAdmin
 from api.security import hasher
+
+
+def test_resend_delivers_the_reset_message(monkeypatch):
+    monkeypatch.setenv('RESEND_API_KEY', 'test-key')
+    monkeypatch.setenv('RESEND_FROM', 'Reviver <reviver@example.test>')
+    with patch('api.accounts.urlopen', return_value=BytesIO(b'{"id":"email-id"}')) as send:
+        deliver_reset('admin@example.test', 'link de recuperação')
+
+    request = send.call_args.args[0]
+    assert request.full_url == 'https://api.resend.com/emails'
+    assert request.get_method() == 'POST'
+    assert request.get_header('Authorization') == 'Bearer test-key'
+    assert json.loads(request.data) == {
+        'from': 'Reviver <reviver@example.test>',
+        'to': ['admin@example.test'],
+        'subject': 'Reviver | Redefinição de senha',
+        'text': 'link de recuperação',
+    }
 
 
 def test_admin_can_save_and_recover_access(client, monkeypatch):
@@ -16,6 +37,7 @@ def test_admin_can_save_and_recover_access(client, monkeypatch):
     monkeypatch.setattr(settings, 'session_secret', 'test-secret-for-local-tests-only!!')
     monkeypatch.setattr(settings, 'public_base_url', 'https://example.test')
     monkeypatch.setattr(settings, 'admin_email', 'admin@example.test')
+    monkeypatch.delenv('RESEND_API_KEY', raising=False)
     for key in ('SMTP_HOST', 'SMTP_FROM', 'SMTP_USER', 'SMTP_PASSWORD'):
         monkeypatch.setenv(key, 'smtp@example.test')
 

@@ -24,7 +24,7 @@ Copie `.env.example` para `.env` para configurar o ambiente local. No VS Code, s
 
 ### Configurar o painel
 
-Use `scripts/hash_password.py` para gerar o hash da senha inicial (mínimo 12 caracteres). Defina `ADMIN_PASSWORD_HASH`, `ADMIN_USERNAME` e `SESSION_SECRET` no `.env` local ou nas variáveis protegidas da hospedagem. A chave da sessão precisa de no mínimo 32 caracteres. Em produção, configure também `APP_ENV=production` e PostgreSQL via `DATABASE_URL` (ou `POSTGRES_URL` na Vercel). O hash inicial é usado uma vez. A recuperação de senha atualiza o banco. Para ativar a recuperação por e-mail, configure `PUBLIC_BASE_URL` com o domínio HTTPS oficial, `ADMIN_EMAIL` e as variáveis `SMTP_*` de `.env.example`.
+Use `scripts/hash_password.py` para gerar o hash da senha inicial (mínimo 12 caracteres). Defina `ADMIN_PASSWORD_HASH`, `ADMIN_USERNAME` e `SESSION_SECRET` no `.env` local ou nas variáveis protegidas da hospedagem. A chave da sessão precisa de no mínimo 32 caracteres. Em produção, configure também `APP_ENV=production` e PostgreSQL via `DATABASE_URL` (ou `POSTGRES_URL` na Vercel). O hash inicial é usado uma vez. A recuperação de senha atualiza o banco. Para ativar a recuperação por e-mail, configure no serviço da API `PUBLIC_BASE_URL` com o domínio HTTPS oficial, `ADMIN_EMAIL`, `RESEND_API_KEY` e `RESEND_FROM` com um remetente verificado. As variáveis `SMTP_*` de `.env.example` permanecem disponíveis para instalações com SMTP.
 
 ```bash
 python scripts/hash_password.py
